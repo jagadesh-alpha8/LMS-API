@@ -1,12 +1,14 @@
 from rest_framework import serializers
-from .models import Course, Module, Video, Subscription, WatchedVideo
+from .models import Course, Module, Video, Subscription
 from django.contrib.auth.models import User
 
 
 class VideoSerializer(serializers.ModelSerializer):
+    video_url = serializers.ReadOnlyField()  # Uses the @property from model
+
     class Meta:
         model = Video
-        fields = ['id', 'title', 'url', 'course', 'module']
+        fields = ['id', 'title','youtube_id', 'video_url', 'course', 'module']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -38,12 +40,3 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ['id', 'user', 'course', 'joined_at', 'completed', 'certificate_issued']
-
-
-class WatchedVideoSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    video = VideoSerializer(read_only=True)
-
-    class Meta:
-        model = WatchedVideo
-        fields = ['id', 'user', 'video', 'watched_at']

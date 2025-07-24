@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 course_id=row['course_id'],
                 module_id=row['module_id'],
                 title=row['title'],
-                url=row['url']
+                youtube_id=row['url']
             )
 
         self.stdout.write(self.style.SUCCESS("✅ Excel data imported successfully"))

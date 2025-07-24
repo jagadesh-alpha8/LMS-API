@@ -22,14 +22,17 @@ class Module(models.Model):
 
 
 class Video(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    module = models.ForeignKey(Module, on_delete=models.CASCADE)
+    course = models.ForeignKey('Course', on_delete=models.CASCADE)
+    module = models.ForeignKey('Module', on_delete=models.CASCADE, null=True)
     title = models.CharField(max_length=200)
-    url = models.URLField(max_length=200, default="")
+    youtube_id = models.CharField(max_length=20)
+
+    @property
+    def video_url(self):
+        return f"https://www.youtube.com/watch?v={self.youtube_id}"
 
     def __str__(self):
         return self.title
-
 
 
 
@@ -42,12 +45,3 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.course.name}"
-
-
-class WatchedVideo(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    video = models.ForeignKey(Video, on_delete=models.CASCADE)
-    watched_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username} watched {self.video.title}"
