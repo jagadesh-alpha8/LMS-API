@@ -2,7 +2,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-
 from courses.models import *
 from assessments.models import *
 from assessments.serializers import *
@@ -22,65 +21,73 @@ def subscribed_assessments_with_questions(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_assessment(request):
+    """
+    Expected payload:
+    {
+        "course_id": 1,
+        "answers": [
+            {"question": 10, "selected_option": "B"},
+            {"question": 11, "selected_option": "C"}
+        ]
+    }
+    """
+    user = request.user
+    data = request.data
+    course_id = data.get('course_id')
+    answers_data = data.get('answers', [])
 
+    if not course_id or not answers_data:
+        return Response({"detail": "course_id and answers are required."}, status=400)
 
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def submit_assessment_answers(request, course_id, assessment_id):
-#     user = request.user
+    try:
+        # Assuming only ONE assessment per course for simplicity.
+        assessment = Assessment.objects.get(course_id=course_id)
+    except Assessment.DoesNotExist:
+        return Response({"detail": "Assessment for this course not found."}, status=404)
 
-#     # Check if user is subscribed to the course
-#     if not Subscription.objects.filter(user=user, course_id=course_id).exists():
-#         return Response({'detail': 'User not subscribed to this course.'}, status=status.HTTP_403_FORBIDDEN)
+    # Count previous attempts
+    previous_attempts = UserAssessmentSubmission.objects.filter(user=user, assessment=assessment).count()
+    attempt_number = previous_attempts + 1
 
-#     # Validate assessment
-#     try:
-#         assessment = Assessment.objects.get(id=assessment_id, course_id=course_id)
-#     except Assessment.DoesNotExist:
-#         return Response({'detail': 'Assessment not found.'}, status=status.HTTP_404_NOT_FOUND)
+    # Create a submission
+    submission = UserAssessmentSubmission.objects.create(
+        user=user,
+        assessment=assessment,
+        attempt_number=attempt_number
+    )
 
-#     submitted_answers = request.data.get('answers', [])
+    correct_count = 0
+    total_questions = len(answers_data)
 
-#     if not submitted_answers:
-#         return Response({'detail': 'No answers submitted.'}, status=status.HTTP_400_BAD_REQUEST)
+    for ans in answers_data:
+        try:
+            question = Question.objects.get(id=ans['question'], assessment=assessment)
+        except Question.DoesNotExist:
+            continue  # Skip invalid question
 
-#     # Count previous attempts
-#     attempt_number = (
-#         UserAssessmentSubmission.objects.filter(user=user, assessment=assessment).count() + 1
-#     )
+        selected = ans['selected_option']
+        is_correct = (selected == question.correct_option)
 
-#     total_correct = 0
-#     submission = UserAssessmentSubmission.objects.create(
-#         user=user,
-#         assessment=assessment,
-#         attempt_number=attempt_number
-#     )
+        if is_correct:
+            correct_count += 1
 
-#     for ans in submitted_answers:
-#         try:
-#             question = Question.objects.get(id=ans['question'], assessment=assessment)
-#         except Question.DoesNotExist:
-#             continue
+        UserAnswer.objects.create(
+            submission=submission,
+            question=question,
+            selected_option=selected,
+            is_correct=is_correct
+        )
 
-#         selected_option = ans.get('selected_option')
-#         is_correct = (selected_option == question.correct_option)
-#         if is_correct:
-#             total_correct += 1
+    score = (correct_count / total_questions) * assessment.total_marks if total_questions else 0
+    submission.score = score
+    submission.save()
 
-#         UserAnswer.objects.create(
-#             submission=submission,
-#             question=question,
-#             selected_option=selected_option,
-#             is_correct=is_correct
-#         )
+    return Response({
+        "message": "Assessment submitted successfully.",
+        "score": score,
+        "attempt_number": attempt_number
+    }, status=status.HTTP_201_CREATED)
 
-#     # Assume 1 mark per correct answer
-#     submission.score = total_correct
-#     submission.save()
-
-#     return Response({
-#         'detail': 'Assessment submitted successfully.',
-#         'score': submission.score,
-#         'total_questions': assessment.questions.count(),
-#         'attempt_number': submission.attempt_number
-#     }, status=status.HTTP_200_OK)
