@@ -1,8 +1,7 @@
 from django.urls import path
-from .views import can_attempt_assessment, AssessmentListView, SubmitAssessmentView
+from .views import *
 
 urlpatterns = [
-    path('can-attempt/<int:course_id>/', can_attempt_assessment),
-    path('list/', AssessmentListView.as_view()),
-    path('submit/', SubmitAssessmentView.as_view()),
+    path('', subscribed_assessments_with_questions),
+    # path('submit/', submit_assessment_answers),
 ]

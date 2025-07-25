@@ -1,71 +1,45 @@
 from rest_framework import serializers
-from .models import Assessment, Question, UserAssessmentSubmission, UserAnswer
+from .models import *
+from courses.models import Course
+
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = '__all__'
+        fields = [
+            'id', 'question_text',
+            'option_a', 'option_b', 'option_c', 'option_d',
+            'correct_option'
+        ]
 
-class AssessmentSerializer(serializers.ModelSerializer):
+
+class AssessmentWithQuestionsSerializer(serializers.ModelSerializer):
+    course_id = serializers.PrimaryKeyRelatedField(
+        queryset=Course.objects.all(), source='course'
+    )
     questions = QuestionSerializer(many=True, read_only=True)
-    is_eligible = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
-        fields = ['id', 'title', 'description', 'course', 'total_marks', 'created_at', 'questions', 'is_eligible']
+        fields = [
+            'id', 'course_id', 'title', 'description',
+            'total_marks', 'created_at', 'questions'
+        ]
+        read_only_fields = ['created_at']
 
-    def get_is_eligible(self, obj):
-        user = self.context['request'].user
-        if not user.is_authenticated:
-            return False
-        total = obj.course.video_set.count()
-        watched = obj.course.video_set.filter(userwatchedvideo__user=user).count()
-        return total > 0 and total == watched
 
+# 3. UserAnswer Serializer (for recording submission answers)
 class UserAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAnswer
-        fields = ['question', 'selected_option']
+        fields = ['question', 'selected_option', 'is_correct']
 
+
+# 4. Submission Serializer (optional: for showing past submissions)
 class UserAssessmentSubmissionSerializer(serializers.ModelSerializer):
-    answers = UserAnswerSerializer(many=True)
-    assessment = serializers.PrimaryKeyRelatedField(queryset=Assessment.objects.all())
+    answers = UserAnswerSerializer(many=True, source='useranswer_set', read_only=True)
 
     class Meta:
         model = UserAssessmentSubmission
-        fields = ['assessment', 'answers', 'score', 'attempt_number']
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        answers_data = validated_data.pop('answers')
-        assessment = validated_data['assessment']
-
-        # ✅ Check video completion
-        total_videos = assessment.course.video_set.count()
-        watched = assessment.course.video_set.filter(userwatchedvideo__user=user).count()
-        if total_videos == 0 or watched < total_videos:
-            raise serializers.ValidationError("Watch all course videos before submitting the assessment.")
-
-        # attempt logic
-        last_attempt = UserAssessmentSubmission.objects.filter(user=user, assessment=assessment).order_by('-attempt_number').first()
-        attempt_number = 1 if not last_attempt else last_attempt.attempt_number + 1
-
-        submission = UserAssessmentSubmission.objects.create(user=user, assessment=assessment, attempt_number=attempt_number)
-
-        score = 0
-        for answer_data in answers_data:
-            question = answer_data['question']
-            selected = answer_data['selected_option']
-            is_correct = (selected == question.correct_option)
-            if is_correct:
-                score += 1
-            UserAnswer.objects.create(
-                submission=submission,
-                question=question,
-                selected_option=selected,
-                is_correct=is_correct
-            )
-
-        submission.score = score
-        submission.save()
-        return submission
+        fields = ['id', 'user', 'assessment', 'attempt_number', 'score', 'submitted_at', 'answers']
+        read_only_fields = ['user', 'assessment', 'attempt_number', 'submitted_at']
