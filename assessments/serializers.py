@@ -33,37 +33,18 @@ class QuestionSerializer(serializers.ModelSerializer):
         return answer.selected_option if answer else None
 
 
-# class AssessmentWithQuestionsSerializer(serializers.ModelSerializer):
-#     course_id = serializers.PrimaryKeyRelatedField(
-#         queryset=Course.objects.all(), source='course'
-#     )
-#     questions = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Assessment
-#         fields = [
-#             'id', 'course_id', 'title', 'description',
-#             'total_marks', 'created_at', 'questions'
-#         ]
-#         read_only_fields = ['created_at']
-
-#     def get_questions(self, obj):
-#         return QuestionSerializer(
-#             obj.questions.all(), many=True, context=self.context
-#         ).data
-
 class AssessmentWithQuestionsSerializer(serializers.ModelSerializer):
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(), source='course'
     )
     questions = serializers.SerializerMethodField()
     score = serializers.SerializerMethodField()  # ✅ Add this line
-
+    attempts = serializers.SerializerMethodField()
     class Meta:
         model = Assessment
         fields = [
             'id', 'course_id', 'title', 'description',
-            'total_marks', 'created_at', 'questions', 'score'  # ✅ Add 'score' to fields
+            'total_marks', 'created_at', 'questions', 'score', 'attempts'  # ✅ Add 'score' to fields
         ]
         read_only_fields = ['created_at']
 
@@ -83,6 +64,14 @@ class AssessmentWithQuestionsSerializer(serializers.ModelSerializer):
         ).order_by('-attempt_number').first()
 
         return submission.score if submission else None
+    
+    def get_attempts(self, obj):  # ✅ New method
+        user = self.context.get('user')
+        if not user:
+            return 0
+        return UserAssessmentSubmission.objects.filter(
+            user=user, assessment=obj
+        ).count()
 
 
 class UserAnswerSerializer(serializers.ModelSerializer):
