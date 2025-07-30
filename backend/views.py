@@ -20,20 +20,20 @@ def generate_certificate(request):
         if not name or not course:
             return JsonResponse({'error': 'Missing name or course'}, status=400)
 
-        # Paths to static assets
+        # Static paths
         template_path = os.path.join(settings.BASE_DIR, 'static', 'certificate_template.png')
         font_path = os.path.join(settings.BASE_DIR, 'static', 'arial.ttf')
 
-        # Load certificate image and font
-        certificate = Image.open(template_path).convert("RGBA")
+        # Load image and font
+        certificate = Image.open(template_path).convert("RGB")  # RGB required for PDF
         draw = ImageDraw.Draw(certificate)
         font = ImageFont.truetype(font_path, size=40)
 
-        # === You must update these based on your underline center coordinates ===
-        name_center_x, name_center_y = 1000, 650      # Center of the name underline
-        course_center_x, course_center_y = 1000, 750  # Center of the course underline
+        # Update coordinates to match underline positions
+        name_center_x, name_center_y = 1000, 650
+        course_center_x, course_center_y = 1000, 750
 
-        # === Measure text size using textbbox ===
+        # Measure text
         name_bbox = draw.textbbox((0, 0), name, font=font)
         name_width = name_bbox[2] - name_bbox[0]
         name_height = name_bbox[3] - name_bbox[1]
@@ -42,21 +42,21 @@ def generate_certificate(request):
         course_width = course_bbox[2] - course_bbox[0]
         course_height = course_bbox[3] - course_bbox[1]
 
-        # === Calculate top-left coordinates to center the text ===
+        # Calculate positions
         name_position = (name_center_x - name_width / 2, name_center_y - name_height / 2)
         course_position = (course_center_x - course_width / 2, course_center_y - course_height / 2)
 
-        # === Draw the text ===
+        # Draw text
         draw.text(name_position, name, fill="black", font=font)
         draw.text(course_position, course, fill="black", font=font)
 
-        # === Return image as HTTP response ===
-        img_io = io.BytesIO()
-        certificate.save(img_io, 'PNG')
-        img_io.seek(0)
+        # Save as PDF to buffer
+        pdf_buffer = io.BytesIO()
+        certificate.save(pdf_buffer, "PDF", resolution=100.0)
+        pdf_buffer.seek(0)
 
-        response = HttpResponse(img_io, content_type='image/png')
-        response['Content-Disposition'] = 'attachment; filename="certificate.png"'
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="certificate.pdf"'
         return response
 
     except Exception as e:
