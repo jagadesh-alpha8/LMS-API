@@ -16,41 +16,50 @@ def generate_certificate(request):
         data = json.loads(request.body)
         name = data.get('name')
         course = data.get('course')
+        college = data.get('college')
+        month = data.get('month')
 
-        if not name or not course:
-            return JsonResponse({'error': 'Missing name or course'}, status=400)
+        # Validate inputs
+        if not all([name, course, college, month]):
+            return JsonResponse({'error': 'Missing name, course, college, or month'}, status=400)
 
-        # Static paths
-        template_path = os.path.join(settings.BASE_DIR, 'static', 'certificate_template.png')
-        font_path = os.path.join(settings.BASE_DIR, 'static', 'arial.ttf')
+        # File paths to template and fonts
+        template_path = os.path.join(settings.BASE_DIR, 'static', 'certificate.png')
+        font_alexbrush = os.path.join(settings.BASE_DIR, 'static', 'AlexBrush-Regula for Name 23pt.ttf')
+        font_rubik = os.path.join(settings.BASE_DIR, 'static', 'Rubik-Medium Course Name 14pt.ttf')
+        font_montserrat = os.path.join(settings.BASE_DIR, 'static', 'Montserrat-Medium for College Name 13pt.ttf')
 
-        # Load image and font
-        certificate = Image.open(template_path).convert("RGB")  # RGB required for PDF
+        # Load template image and create draw context
+        certificate = Image.open(template_path).convert("RGB")
         draw = ImageDraw.Draw(certificate)
-        font = ImageFont.truetype(font_path, size=40)
 
-        # Update coordinates to match underline positions
-        name_center_x, name_center_y = 1000, 650
-        course_center_x, course_center_y = 1000, 750
+        # Load fonts with specified sizes
+        font_name = ImageFont.truetype(font_alexbrush, size=60)
+        font_course = ImageFont.truetype(font_rubik, size=40)
+        font_college = ImageFont.truetype(font_montserrat, size=36)
+        font_month = ImageFont.truetype(font_montserrat, size=36)
 
-        # Measure text
-        name_bbox = draw.textbbox((0, 0), name, font=font)
-        name_width = name_bbox[2] - name_bbox[0]
-        name_height = name_bbox[3] - name_bbox[1]
+        # Center coordinates (adjust as per your template design)
+        name_center = (1754, 1276)
+        course_center = (1754, 1677)
+        college_center = (1754, 1499)
+        month_center = (849, 2096)
 
-        course_bbox = draw.textbbox((0, 0), course, font=font)
-        course_width = course_bbox[2] - course_bbox[0]
-        course_height = course_bbox[3] - course_bbox[1]
+        # Draw text centered
+        def draw_centered_text(text, center, font, fill="black"):
+            bbox = draw.textbbox((0, 0), text, font=font)
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            position = (center[0] - width / 2, center[1] - height / 2)
+            draw.text(position, text, font=font, fill=fill)
 
-        # Calculate positions
-        name_position = (name_center_x - name_width / 2, name_center_y - name_height / 2)
-        course_position = (course_center_x - course_width / 2, course_center_y - course_height / 2)
+        # Draw each field
+        draw_centered_text(name, name_center, font_name)
+        draw_centered_text(course, course_center, font_course)
+        draw_centered_text(college, college_center, font_college)
+        draw_centered_text(month, month_center, font_month)
 
-        # Draw text
-        draw.text(name_position, name, fill="black", font=font)
-        draw.text(course_position, course, fill="black", font=font)
-
-        # Save as PDF to buffer
+        # Save to PDF
         pdf_buffer = io.BytesIO()
         certificate.save(pdf_buffer, "PDF", resolution=100.0)
         pdf_buffer.seek(0)
