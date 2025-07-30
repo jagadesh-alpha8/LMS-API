@@ -34,10 +34,10 @@ def generate_certificate(request):
         draw = ImageDraw.Draw(certificate)
 
         # Load fonts with specified sizes
-        font_name = ImageFont.truetype(font_alexbrush, size=60)
-        font_course = ImageFont.truetype(font_rubik, size=40)
-        font_college = ImageFont.truetype(font_montserrat, size=36)
-        font_month = ImageFont.truetype(font_montserrat, size=36)
+        font_name = ImageFont.truetype(font_alexbrush, size=80)
+        font_course = ImageFont.truetype(font_rubik, size=53)
+        font_college = ImageFont.truetype(font_montserrat, size=48)
+        font_month = ImageFont.truetype(font_montserrat, size=48)
 
         # Center coordinates (adjust as per your template design)
         name_center = (1754, 1276)
