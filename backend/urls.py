@@ -23,6 +23,6 @@ urlpatterns = [
     path('api/user/', include('user.urls')), 
     path('api/courses/', include('courses.urls')), 
     path('api/assessments/', include('assessments.urls')), 
-    path('api/generate-certificate/', generate_certificate, name='generate_certificate'),
+    path('api/generate-certificate/', generate_certificate),
 
 ]

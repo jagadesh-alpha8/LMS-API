@@ -16,19 +16,14 @@ def subscribed_assessments_with_questions(request):
     Return all assessments with questions and user's selected options for subscribed courses.
     """
     # Get course IDs user subscribed to
-    subscribed_course_ids = Subscription.objects.filter(
-        user=request.user
-    ).values_list('course_id', flat=True)
+    subscribed_course_ids = Subscription.objects.filter(user=request.user).values_list('course_id', flat=True)
 
     # Get assessments for those courses
-    assessments = Assessment.objects.filter(    
-        course_id__in=subscribed_course_ids
-    ).prefetch_related('questions')
+    assessments = Assessment.objects.filter(course_id__in=subscribed_course_ids).prefetch_related('questions')
 
     # Pass user in context to get selected_option per question
-    serializer = AssessmentWithQuestionsSerializer(
-        assessments, many=True, context={'user': request.user}
-    )
+    serializer = AssessmentWithQuestionsSerializer(assessments, many=True, context={'user': request.user})
+    
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -98,6 +93,9 @@ def submit_assessment(request):
     score = (correct_count / total_questions) * assessment.total_marks if total_questions else 0
     submission.score = score
     submission.save()
+
+    Subscription.objects.filter(user=user, course_id=course_id).update(completed=True)
+
 
     return Response({
         "message": "Assessment submitted successfully.",
