@@ -14,3 +14,10 @@ admin.site.register(Question)
 admin.site.register(UserAssessmentSubmission)
 admin.site.register(UserAnswer)
 admin.site.register(UserWatchedVideo)
+
+from django.contrib.admin import AdminSite
+
+# Change the site title and header
+admin.site.site_header = "InGage Admin"
+# admin.site.site_title = "InGage Administrator"
+admin.site.index_title = "Welcome to the Admin Dashboard"
